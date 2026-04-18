@@ -70,10 +70,9 @@ export const getTidesForGraph = createServerFn({ method: 'GET' })
     const previousDay: string | false = index > 0 ? tides.schedule[index - 1].date : false;
 
     // Find the data for the graph itself
-    const graphStartTimestamp = DateTime.fromSQL(day.date).toJSDate();
-    graphStartTimestamp.setHours(0, 0, 0, 0);
-    const graphEndTimestamp = new Date(graphStartTimestamp);
-    graphEndTimestamp.setDate(graphEndTimestamp.getDate() + 1); // The charts don't work so well beyond a day
+    const graphStart = DateTime.fromSQL(day.date, { zone: 'Europe/London' }).startOf('day');
+    const graphStartTimestamp = graphStart.toJSDate();
+    const graphEndTimestamp = graphStart.plus({ days: 1 }).toJSDate();
 
     let startIndex = tides.schedule.findIndex(
       (date) => {
@@ -95,7 +94,7 @@ export const getTidesForGraph = createServerFn({ method: 'GET' })
       .slice(startIndex, endIndex)
       .flatMap((date) =>
         date.groups.map((tide) => ({
-          timestamp: new Date(date.date + " " + tide.time).getTime() / 1000,
+          timestamp: DateTime.fromSQL(date.date + " " + tide.time, { zone: 'Europe/London' }).toMillis() / 1000,
           height: Number(tide.height),
         }))
       );

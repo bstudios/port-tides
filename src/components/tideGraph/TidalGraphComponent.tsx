@@ -20,7 +20,7 @@ function ChartTooltip({ label, payload, highTides }: ChartTooltipProps) {
   return (
     <Paper px="md" py="sm" withBorder shadow="md" radius="md">
       <Text fw={500} mb={5}>
-        {DateTime.fromMillis(Number(label) * 1000).toFormat("d MMM yyyy, HH:mm")}
+        {DateTime.fromMillis(Number(label) * 1000).setZone('Europe/London').toFormat("d MMM yyyy, HH:mm")}
       </Text>
       {payload.map((item: any) => (
         <Text key={item.name} c={item.color} fz="sm">
@@ -131,7 +131,7 @@ export function TidalGraphComponent({
 
   // When the tool mode is time, find the height of the tide at that time
   const effectiveTargetHeight = (config.toolMode === 'time' && config.targetTime !== null
-    ? (todayGraphData.find(d => DateTime.fromMillis(d.date * 1000).toFormat("HHmm") === config.targetTime)?.Height ?? config.targetHeight)
+    ? (todayGraphData.find(d => DateTime.fromMillis(d.date * 1000).setZone('Europe/London').toFormat("HHmm") === config.targetTime)?.Height ?? config.targetHeight)
     : config.targetHeight) ?? defaultConfig.targetHeight;
   const resultTimes = config.toolMode !== 'none' ? findTimesForHeight(todayGraphData, effectiveTargetHeight) : [];
   return (
@@ -153,7 +153,7 @@ export function TidalGraphComponent({
         }}
         xAxisProps={{
           tickFormatter: (value: number) =>
-            DateTime.fromMillis(value * 1000).toFormat("h a"),
+            DateTime.fromMillis(value * 1000).setZone('Europe/London').toFormat("h a"),
           padding: { left: 30, right: 30 },
           interval: "equidistantPreserveStart",
           allowDecimals: false,
@@ -186,7 +186,7 @@ export function TidalGraphComponent({
           ] : []),
           ...(config.showHighTides ? highTides.flatMap((tide) => ({
             x: tide.timestamp,
-            label: DateTime.fromMillis(tide.timestamp * 1000).toFormat("HH:mm"),
+            label: DateTime.fromMillis(tide.timestamp * 1000).setZone('Europe/London').toFormat("HH:mm"),
             color: 'var(--hightide-line-color)',
           })) : []),
           ...(config.showSunriseSunset ? [
@@ -197,7 +197,7 @@ export function TidalGraphComponent({
             { y: effectiveTargetHeight, label: `${effectiveTargetHeight.toFixed(2)}m`, color: 'var(--mantine-color-blue-6)' },
             ...resultTimes.map(r => ({
               x: r.time,
-              label: DateTime.fromMillis(r.time * 1000).toFormat("HH:mm"),
+              label: DateTime.fromMillis(r.time * 1000).setZone('Europe/London').toFormat("HH:mm"),
               color: 'var(--mantine-color-blue-6)',
             }))
           ] : []),
@@ -273,7 +273,7 @@ export function TidalGraphComponent({
                       {r.direction === 'falling' && <IconArrowDown size={14} color="var(--mantine-color-blue-9)" />}
                       {r.direction === 'flat' && <IconMinus size={14} color="var(--mantine-color-blue-9)" />}
                       <Text size="sm" fw={700} c="blue.9">
-                        {DateTime.fromMillis(r.time * 1000).toFormat("HH:mm")}
+                        {DateTime.fromMillis(r.time * 1000).setZone('Europe/London').toFormat("HH:mm")}
                       </Text>
                       <Text size="xs" c="blue.7" fw={500} style={{ textTransform: 'capitalize' }}>
                         {r.direction === 'flat' ? 'peak/trough' : r.direction}
