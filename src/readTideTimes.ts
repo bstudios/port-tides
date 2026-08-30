@@ -3,6 +3,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { notFound, redirect } from '@tanstack/react-router';
 import { DateTime } from "luxon";
 import tidalDataFromFile from '../data/tides.json';
+import { findNextHighTide } from './nextHighTide';
 import type { TidesJson_TopLevel } from './types';
 
 //const TIDES_FILE = 'data/tides.json'
@@ -127,32 +128,9 @@ export const getHomepageTides = createServerFn({ method: 'GET' }).inputValidator
       let date = new Date(pdf.date);
       return date < nextYear && date >= month;
     });
-    // Get the next high tide
-    const now = DateTime.now().setZone('Europe/London');
-    const allTides = homepageTides.flatMap((day) =>
-      day.groups.map((tide) => ({
-        // The stored time is already Europe/London wall-clock, so parse it in
-        // that zone rather than parsing in the server zone and converting.
-        time: DateTime.fromSQL(day.date + " " + tide.time, {
-          zone: "Europe/London",
-        }),
-        height: tide.height,
-      }))
-    );
-
-    const nextHighTideObj = allTides.find((tide) => tide.time > now);
-    let nextHighTide = null;
-    if (nextHighTideObj) {
-      const diff = nextHighTideObj.time.diff(now, ["hours", "minutes"]);
-      const hours = Math.floor(diff.hours);
-      const minutes = Math.floor(diff.minutes);
-      nextHighTide = {
-        hours,
-        minutes,
-        time: nextHighTideObj.time.toFormat("HH:mm"),
-        height: nextHighTideObj.height
-      };
-    }
+    // Get the next high tide. The browser recomputes this with the same helper
+    // once the page has been open (or edge-cached) long enough to drift.
+    const nextHighTide = findNextHighTide(homepageTides);
 
     return { homepageTides, today, homepageFiles, nextHighTide };
   })
