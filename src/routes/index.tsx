@@ -47,6 +47,10 @@ export const Route = createFileRoute('/')({
 
 function App() {
   const { homepageTides, today, homepageFiles, nextHighTide } = Route.useLoaderData()
+  // `today` is the Europe/London start of day as an absolute instant. Read it
+  // back in that zone rather than the viewer's, otherwise a visitor west of
+  // London gets yesterday's date in these links and month name.
+  const londonToday = DateTime.fromJSDate(today).setZone("Europe/London");
   const daysToDisplay = useMatches({ base: 3, sm: 6, md: 8, lg: 10, xl: 10 }) as number;
   const tidesToDisplay = homepageTides.slice(0, daysToDisplay);
 
@@ -75,7 +79,7 @@ function App() {
         <Group justify="flex-end">
           <Link
             to={
-              "/tide-graph/" + DateTime.fromJSDate(today).toFormat("yyyy-LL-dd")
+              "/tide-graph/" + londonToday.toFormat("yyyy-LL-dd")
             }
             style={{ textDecoration: "none" }}
           >
@@ -88,14 +92,14 @@ function App() {
             </Button>
           </Link>
           <Link
-            to={"tide-tables/" + DateTime.fromJSDate(today).toFormat("yyyy/LL")}
+            to={"tide-tables/" + londonToday.toFormat("yyyy/LL")}
           >
             <Button
               leftSection={<IconTable size={14} />}
               variant="light"
               visibleFrom="sm"
             >
-              {DateTime.fromJSDate(today).toFormat("MMMM")}{" "}
+              {londonToday.toFormat("MMMM")}{" "}
               Tide Table
             </Button>
           </Link>
@@ -123,7 +127,7 @@ function App() {
         ))}
         <Link
           to={
-            "/tide-graph/" + DateTime.fromJSDate(today).toFormat("yyyy-LL-dd")
+            "/tide-graph/" + londonToday.toFormat("yyyy-LL-dd")
           }
           style={{ textDecoration: "none" }}
         >
@@ -137,13 +141,13 @@ function App() {
           </Card>
         </Link>
         <Link
-          to={"/tide-tables/" + DateTime.fromJSDate(today).toFormat("yyyy/LL")}
+          to={"/tide-tables/" + londonToday.toFormat("yyyy/LL")}
           style={{ textDecoration: "none" }}
         >
           <Card shadow="xs" padding={"xs"} hiddenFrom="sm">
             <Group justify="space-between">
               <Text size="xl" fw={500}>
-                {DateTime.fromJSDate(today).toFormat("MMMM")}{" "}
+                {londonToday.toFormat("MMMM")}{" "}
                 Tide Table
               </Text>
               <IconArrowRight />
