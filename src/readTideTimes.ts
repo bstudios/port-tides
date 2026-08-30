@@ -131,9 +131,11 @@ export const getHomepageTides = createServerFn({ method: 'GET' }).inputValidator
     const now = DateTime.now().setZone('Europe/London');
     const allTides = homepageTides.flatMap((day) =>
       day.groups.map((tide) => ({
-        time: DateTime.fromSQL(day.date + " " + tide.time).setZone(
-          "Europe/London"
-        ),
+        // The stored time is already Europe/London wall-clock, so parse it in
+        // that zone rather than parsing in the server zone and converting.
+        time: DateTime.fromSQL(day.date + " " + tide.time, {
+          zone: "Europe/London",
+        }),
         height: tide.height,
       }))
     );
