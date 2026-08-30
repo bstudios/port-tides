@@ -20,9 +20,10 @@ import {
   IconRippleUp,
   IconTable
 } from "@tabler/icons-react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { DateTime } from "luxon";
 import * as React from "react";
+import { findNextHighTide } from "../nextHighTide";
 import Layout from "../components/navigation/Layout";
 
 export const Route = createFileRoute('/')({
@@ -46,7 +47,53 @@ export const Route = createFileRoute('/')({
 })
 
 function App() {
-  const { homepageTides, today, homepageFiles, nextHighTide } = Route.useLoaderData()
+  const { homepageTides, today, homepageFiles, nextHighTide: renderedNextHighTide } = Route.useLoaderData()
+  // `today` is the Europe/London start of day as an absolute instant. Read it
+  // back in that zone rather than the viewer's, otherwise a visitor west of
+  // London gets yesterday's date in these links and month name.
+  const londonToday = DateTime.fromJSDate(today).setZone("Europe/London");
+
+  // The countdown is worked out when the page is rendered, but that render can
+  // be served from the edge cache (s-maxage 300) and the page can sit open in a
+  // background tab or come back from bfcache long after that. Recompute it in
+  // the browser from the tide data already in the loader - no network needed.
+  // Seeded with the server's value so the first render matches the SSR markup.
+  const [nextHighTide, setNextHighTide] = React.useState(renderedNextHighTide);
+  const computedAt = React.useRef(Date.now());
+  const refetched = React.useRef(false);
+  const router = useRouter();
+
+  React.useEffect(() => {
+    const STALE_AFTER_MS = 5 * 60 * 1000;
+    const recompute = () => {
+      computedAt.current = Date.now();
+      const next = findNextHighTide(homepageTides);
+      setNextHighTide(next);
+      // Left open long enough to outlast the ten days the loader fetched, so
+      // the tide cards are stale too. Refetch, once, rather than silently
+      // dropping the heading.
+      if (!next && !refetched.current) {
+        refetched.current = true;
+        router.invalidate();
+      }
+    };
+    const recomputeIfStale = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - computedAt.current < STALE_AFTER_MS) return;
+      recompute();
+    };
+    // On mount regardless of age: the markup we hydrated may itself have been
+    // sitting in a cache for up to five minutes before it reached the browser.
+    recompute();
+    document.addEventListener("visibilitychange", recomputeIfStale);
+    window.addEventListener("focus", recomputeIfStale);
+    window.addEventListener("pageshow", recomputeIfStale);
+    return () => {
+      document.removeEventListener("visibilitychange", recomputeIfStale);
+      window.removeEventListener("focus", recomputeIfStale);
+      window.removeEventListener("pageshow", recomputeIfStale);
+    };
+  }, [homepageTides, router]);
   const daysToDisplay = useMatches({ base: 3, sm: 6, md: 8, lg: 10, xl: 10 }) as number;
   const tidesToDisplay = homepageTides.slice(0, daysToDisplay);
 
@@ -75,7 +122,7 @@ function App() {
         <Group justify="flex-end">
           <Link
             to={
-              "/tide-graph/" + DateTime.fromJSDate(today).toFormat("yyyy-LL-dd")
+              "/tide-graph/" + londonToday.toFormat("yyyy-LL-dd")
             }
             style={{ textDecoration: "none" }}
           >
@@ -88,14 +135,14 @@ function App() {
             </Button>
           </Link>
           <Link
-            to={"tide-tables/" + DateTime.fromJSDate(today).toFormat("yyyy/LL")}
+            to={"tide-tables/" + londonToday.toFormat("yyyy/LL")}
           >
             <Button
               leftSection={<IconTable size={14} />}
               variant="light"
               visibleFrom="sm"
             >
-              {DateTime.fromJSDate(today).toFormat("MMMM")}{" "}
+              {londonToday.toFormat("MMMM")}{" "}
               Tide Table
             </Button>
           </Link>
@@ -123,7 +170,7 @@ function App() {
         ))}
         <Link
           to={
-            "/tide-graph/" + DateTime.fromJSDate(today).toFormat("yyyy-LL-dd")
+            "/tide-graph/" + londonToday.toFormat("yyyy-LL-dd")
           }
           style={{ textDecoration: "none" }}
         >
@@ -137,13 +184,13 @@ function App() {
           </Card>
         </Link>
         <Link
-          to={"/tide-tables/" + DateTime.fromJSDate(today).toFormat("yyyy/LL")}
+          to={"/tide-tables/" + londonToday.toFormat("yyyy/LL")}
           style={{ textDecoration: "none" }}
         >
           <Card shadow="xs" padding={"xs"} hiddenFrom="sm">
             <Group justify="space-between">
               <Text size="xl" fw={500}>
-                {DateTime.fromJSDate(today).toFormat("MMMM")}{" "}
+                {londonToday.toFormat("MMMM")}{" "}
                 Tide Table
               </Text>
               <IconArrowRight />

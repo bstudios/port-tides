@@ -2,6 +2,7 @@ import { etagForMonth, secondsLeftIMonth } from "@/cacheTimings";
 import { Accordion, Button, Card, Group, SimpleGrid, Text } from "@mantine/core";
 import { IconDownload, IconHome } from "@tabler/icons-react";
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { DateTime } from "luxon";
 import Layout from "../../components/navigation/Layout";
 import { getTideTablesByYear } from "../../readTideTimes";
 export const Route = createFileRoute('/tide-tables/')({
@@ -56,6 +57,10 @@ export const Route = createFileRoute('/tide-tables/')({
 })
 function Page() {
   const { years, month } = Route.useLoaderData();
+  // `month` is the Europe/London start of month as an absolute instant, so read
+  // the year back in that zone - getFullYear() would use the viewer's zone and
+  // pick the previous year for visitors west of London each January.
+  const currentYear = DateTime.fromJSDate(month).setZone("Europe/London").year;
   return (
     <Layout
       title="Downloadable Tide Tables"
@@ -69,10 +74,7 @@ function Page() {
     >
       <Accordion
         multiple
-        defaultValue={[
-          month.getFullYear() + "-tab",
-          month.getFullYear() + 1 + "-tab",
-        ]}
+        defaultValue={[currentYear + "-tab", currentYear + 1 + "-tab"]}
       >
         {years.map((year) => (
           <Accordion.Item key={year.year} value={year.year + "-tab"}>

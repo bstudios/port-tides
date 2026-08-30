@@ -17,32 +17,41 @@ interface TidesJson_ScheduleObject {
 const generateIcal = () => {
   console.log(`Generating iCal file for tide times`);
   const cal = ical();
-  cal.timezone("Europe/London");
+  // Deliberately not cal.timezone("Europe/London"): that switches event
+  // serialisation to *floating* times (DTSTART:20260830T224900), which only
+  // read correctly for a viewer already in that zone. Events are emitted as
+  // absolute UTC instants instead, so they land on the right moment in every
+  // client. This is only a display hint for the calendar as a whole.
+  cal.x("X-WR-TIMEZONE", "Europe/London");
   cal.name("Porthmadog Tide Times");
   cal.description(
     "Tide times for Porthmadog, Borth-y-gest, Morfa Bychan and Black Rock Sands from Port-Tides.com"
   );
   
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const nextYear = new Date(today);
-  nextYear.setDate(today.getDate() + 365);
+  // Window the schedule in Europe/London so which days get included doesn't
+  // depend on the timezone of the machine running the build.
+  const today = DateTime.now().setZone("Europe/London").startOf("day");
+  const nextYear = today.plus({ days: 365 });
   
   // Cast TidalData to any or typed structure because direct import might be typed generic
   const schedule = (TidalData as any).schedule as TidesJson_ScheduleObject[];
 
   schedule
     .filter((timeDay) => {
-      let date = new Date(timeDay.date);
+      const date = DateTime.fromSQL(timeDay.date, { zone: "Europe/London" });
       return date >= today && date <= nextYear;
     })
     .forEach((day) =>
       day.groups.forEach((tide) => {
+        // Stored times are already Europe/London wall-clock, so parse them in
+        // that zone rather than in the build machine's zone. toJSDate() then
+        // yields the correct absolute instant regardless of where this runs.
+        const start = DateTime.fromSQL(day.date + " " + tide.time, {
+          zone: "Europe/London",
+        });
         cal.createEvent({
-          start: DateTime.fromSQL(day.date + " " + tide.time).toJSDate(),
-          end: DateTime.fromSQL(day.date + " " + tide.time)
-            .plus({ minutes: 30 })
-            .toJSDate(),
+          start: start.toJSDate(),
+          end: start.plus({ minutes: 30 }).toJSDate(),
           summary: `High Tide Porthmadog - ${tide.height}m`,
           description: {
             plain: "Powered by port-tides.com",
